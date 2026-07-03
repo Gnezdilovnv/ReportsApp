@@ -4,30 +4,29 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="16dp">
+    
     <EditText
         android:id="@+id/etFieldName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Название поля"
-        android:layout_marginBottom="16dp"/>
+        android:layout_marginBottom="16dp" />
+    
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Тип поля"
-        android:layout_marginBottom="8dp"/>
+        android:text="Тип поля" />
+    
     <Spinner
         android:id="@+id/spinnerFieldType"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"/>
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="ID категорий (через запятую)"
-        android:layout_marginBottom="8dp"/>
+        android:layout_marginBottom="16dp" />
+    
     <EditText
         android:id="@+id/etCategoryIds"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="id1, id2, all"/>
+        android:hint="ID категорий (через запятую)" />
+    
 </LinearLayout>

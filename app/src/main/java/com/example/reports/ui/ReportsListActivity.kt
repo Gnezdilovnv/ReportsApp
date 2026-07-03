@@ -17,53 +17,40 @@ class ReportsListActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Logger.writeLog("ReportsListActivity onCreate started")
+        setContentView(R.layout.activity_reports_list)
         
-        try {
-            setContentView(R.layout.activity_reports_list)
-            Logger.writeLog("ReportsListActivity layout set")
-
-            listView = findViewById(R.id.listViewReports)
-            loadReports()
-            Logger.writeLog("ReportsListActivity initialized successfully")
-            
-        } catch (e: Exception) {
-            Logger.writeError("ReportsListActivity onCreate error", e)
-            Toast.makeText(this, "Ошибка загрузки отчетов", Toast.LENGTH_LONG).show()
-        }
+        Logger.writeLog("ReportsListActivity started")
+        
+        listView = findViewById(R.id.listViewReports)
+        loadReports()
     }
 
     private fun loadReports() {
-        try {
-            scope.launch {
-                val reports = withContext(Dispatchers.IO) {
-                    db.reportDao().getAll()
-                }
-                
-                Logger.writeLog("Loaded ${reports.size} reports")
-
-                if (reports.isEmpty()) {
-                    Toast.makeText(this@ReportsListActivity, "Нет отчетов", Toast.LENGTH_SHORT).show()
-                } else {
-                    val titles = reports.map { 
-                        "${it.title} (${java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale.getDefault()).format(it.createdAt)})" 
-                    }
-                    val adapter = ArrayAdapter(this@ReportsListActivity, android.R.layout.simple_list_item_1, titles)
-                    listView.adapter = adapter
-                    
-                    listView.setOnItemClickListener { _, _, position, _ ->
-                        val report = reports[position]
-                        Logger.writeLog("Report clicked: ${report.title}")
-                        Toast.makeText(
-                            this@ReportsListActivity,
-                            "Отчет: ${report.title}\nДанные: ${report.data}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                }
+        scope.launch {
+            val reports = withContext(Dispatchers.IO) {
+                db.reportDao().getAll()
             }
-        } catch (e: Exception) {
-            Logger.writeError("loadReports error", e)
+            
+            if (reports.isEmpty()) {
+                Toast.makeText(this@ReportsListActivity, "Нет отчетов", Toast.LENGTH_SHORT).show()
+            } else {
+                val items = reports.map { report ->
+                    val date = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date(report.createdAt))
+                    "${report.title} ($date)"
+                }
+                val adapter = ArrayAdapter(this@ReportsListActivity, android.R.layout.simple_list_item_1, items)
+                listView.adapter = adapter
+                
+                listView.setOnItemClickListener { _, _, position, _ ->
+                    val report = reports[position]
+                    Toast.makeText(
+                        this@ReportsListActivity,
+                        "Данные: ${report.data}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+                Logger.writeLog("Loaded ${reports.size} reports")
+            }
         }
     }
 }
