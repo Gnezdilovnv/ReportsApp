@@ -23,25 +23,20 @@ class CategoriesActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_categories)
         
-        Logger.writeLog("CategoriesActivity started")
-        
         recyclerView = findViewById(R.id.recyclerViewCategories)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
         adapter = CategoriesAdapter(
             onEdit = { category ->
-                Logger.writeLog("Edit category: ${category.name}")
                 showEditCategoryDialog(category)
             },
             onDelete = { category ->
-                Logger.writeLog("Delete category: ${category.name}")
                 showDeleteCategoryDialog(category)
             }
         )
         recyclerView.adapter = adapter
 
         findViewById<Button>(R.id.btnAddCategory).setOnClickListener {
-            Logger.writeLog("Add category button clicked")
             showAddCategoryDialog()
         }
 
@@ -55,9 +50,7 @@ class CategoriesActivity : AppCompatActivity() {
                     db.categoryDao().getAll()
                 }
                 adapter.submitList(categories)
-                Logger.writeLog("Loaded ${categories.size} categories")
             } catch (e: Exception) {
-                Logger.writeError("Load categories error", e)
                 Toast.makeText(this@CategoriesActivity, "Ошибка загрузки", Toast.LENGTH_SHORT).show()
             }
         }
@@ -76,17 +69,14 @@ class CategoriesActivity : AppCompatActivity() {
                     Toast.makeText(this, "Введите название", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
-                
                 scope.launch {
                     try {
                         withContext(Dispatchers.IO) {
                             db.categoryDao().insert(Category(name = name))
                         }
-                        Logger.writeLog("Category created: $name")
                         loadCategories()
                         Toast.makeText(this@CategoriesActivity, "Категория создана", Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
-                        Logger.writeError("Create category error", e)
                         Toast.makeText(this@CategoriesActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -108,17 +98,14 @@ class CategoriesActivity : AppCompatActivity() {
                     Toast.makeText(this, "Введите название", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
-                
                 scope.launch {
                     try {
                         withContext(Dispatchers.IO) {
                             db.categoryDao().update(category.copy(name = name))
                         }
-                        Logger.writeLog("Category updated: ${category.name} -> $name")
                         loadCategories()
                         Toast.makeText(this@CategoriesActivity, "Категория обновлена", Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
-                        Logger.writeError("Update category error", e)
                         Toast.makeText(this@CategoriesActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -130,18 +117,15 @@ class CategoriesActivity : AppCompatActivity() {
     private fun showDeleteCategoryDialog(category: Category) {
         AlertDialog.Builder(this)
             .setTitle("Удалить категорию?")
-            .setMessage("Все отчеты в этой категории будут удалены")
             .setPositiveButton("Удалить") { _, _ ->
                 scope.launch {
                     try {
                         withContext(Dispatchers.IO) {
                             db.categoryDao().delete(category)
                         }
-                        Logger.writeLog("Category deleted: ${category.name}")
                         loadCategories()
                         Toast.makeText(this@CategoriesActivity, "Категория удалена", Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
-                        Logger.writeError("Delete category error", e)
                         Toast.makeText(this@CategoriesActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 }

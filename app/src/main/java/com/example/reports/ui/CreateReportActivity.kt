@@ -1,6 +1,8 @@
 package com.example.reports.ui
 
 import android.Manifest
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
@@ -33,8 +35,6 @@ class CreateReportActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_create_report)
         
-        Logger.writeLog("CreateReportActivity started")
-        
         spinnerCategory = findViewById(R.id.spinnerCategory)
         fieldsContainer = findViewById(R.id.fieldsContainer)
         val btnSubmit = findViewById<Button>(R.id.btnSubmit)
@@ -42,7 +42,6 @@ class CreateReportActivity : AppCompatActivity() {
         loadCategories()
         
         btnSubmit.setOnClickListener {
-            Logger.writeLog("Submit report button clicked")
             validateAndSubmit()
         }
     }
@@ -70,15 +69,11 @@ class CreateReportActivity : AppCompatActivity() {
                 spinnerCategory.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                     override fun onItemSelected(parent: AdapterView<*>, view: android.view.View?, position: Int, id: Long) {
                         selectedCategory = categories[position]
-                        Logger.writeLog("Category selected: ${selectedCategory?.name}")
                         loadFieldsForCategory(selectedCategory!!)
                     }
                     override fun onNothingSelected(parent: AdapterView<*>) {}
                 }
-                
-                Logger.writeLog("Loaded ${categories.size} categories")
             } catch (e: Exception) {
-                Logger.writeError("Load categories error", e)
                 Toast.makeText(this@CreateReportActivity, "Ошибка загрузки: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
@@ -90,8 +85,6 @@ class CreateReportActivity : AppCompatActivity() {
                 val fields = withContext(Dispatchers.IO) {
                     db.fieldDao().getByCategoryId(category.id)
                 }
-                
-                Logger.writeLog("Loaded ${fields.size} fields for category ${category.name}")
                 
                 runOnUiThread {
                     fieldsContainer.removeAllViews()
@@ -106,7 +99,6 @@ class CreateReportActivity : AppCompatActivity() {
                     }
                 }
             } catch (e: Exception) {
-                Logger.writeError("Load fields error", e)
                 Toast.makeText(this@CreateReportActivity, "Ошибка загрузки полей", Toast.LENGTH_SHORT).show()
             }
         }
@@ -129,18 +121,16 @@ class CreateReportActivity : AppCompatActivity() {
             FieldType.TEXT -> {
                 val input = TextInputEditText(this).apply { 
                     hint = "Введите текст"
-                    if (field.isRequired) {
-                        addTextChangedListener(object : android.text.TextWatcher {
-                            override fun afterTextChanged(s: android.text.Editable?) {
-                                fieldValues[field.id] = s.toString()
-                            }
-                            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-                        })
-                    }
                 }
                 container.addView(TextInputLayout(this).apply { addView(input) })
                 fieldValues[field.id] = ""
+                input.addTextChangedListener(object : android.text.TextWatcher {
+                    override fun afterTextChanged(s: android.text.Editable?) {
+                        fieldValues[field.id] = s.toString()
+                    }
+                    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                })
             }
             
             FieldType.DATE_TIME -> {
@@ -150,7 +140,6 @@ class CreateReportActivity : AppCompatActivity() {
                         showDateTimePicker { datetime ->
                             text = datetime
                             fieldValues[field.id] = datetime
-                            Logger.writeLog("DateTime selected: $datetime")
                         }
                     }
                 }
@@ -167,7 +156,6 @@ class CreateReportActivity : AppCompatActivity() {
                                 val coords = "${location.latitude}, ${location.longitude}"
                                 text = coords
                                 fieldValues[field.id] = coords
-                                Logger.writeLog("Location obtained: $coords")
                             }
                         }
                     }
@@ -183,7 +171,6 @@ class CreateReportActivity : AppCompatActivity() {
                 switch.setOnCheckedChangeListener { _, isChecked ->
                     switch.text = if (isChecked) "Да" else "Нет"
                     fieldValues[field.id] = isChecked.toString()
-                    Logger.writeLog("Switch changed to: ${isChecked}")
                 }
             }
             
@@ -223,7 +210,6 @@ class CreateReportActivity : AppCompatActivity() {
             return
         }
         
-        // Проверяем обязательные поля
         val missingFields = fieldValues.filter { it.value.isEmpty() }
         if (missingFields.isNotEmpty()) {
             Toast.makeText(this, "Заполните все обязательные поля", Toast.LENGTH_SHORT).show()
@@ -239,18 +225,14 @@ class CreateReportActivity : AppCompatActivity() {
             synced = false
         )
         
-        Logger.writeLog("Submitting report: ${report.title}")
-        
         scope.launch {
             try {
                 withContext(Dispatchers.IO) {
                     db.reportDao().insert(report)
                 }
-                Logger.writeLog("Report saved successfully")
                 Toast.makeText(this@CreateReportActivity, "Отчет сохранен!", Toast.LENGTH_SHORT).show()
                 finish()
             } catch (e: Exception) {
-                Logger.writeError("Save report error", e)
                 Toast.makeText(this@CreateReportActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
