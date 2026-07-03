@@ -12,7 +12,6 @@ import com.example.reports.data.Field
 import com.example.reports.data.FieldCategoryRelation
 import com.example.reports.data.FieldType
 import com.example.reports.ui.adapters.FieldsAdapter
-import com.example.reports.utils.Logger
 import kotlinx.coroutines.*
 
 class FieldManagementActivity : AppCompatActivity() {

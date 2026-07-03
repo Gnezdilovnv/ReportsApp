@@ -10,7 +10,6 @@ import com.example.reports.R
 import com.example.reports.data.AppDatabase
 import com.example.reports.data.Category
 import com.example.reports.ui.adapters.CategoriesAdapter
-import com.example.reports.utils.Logger
 import kotlinx.coroutines.*
 
 class CategoriesActivity : AppCompatActivity() {
