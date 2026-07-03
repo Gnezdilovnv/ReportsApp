@@ -1,6 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Primary -->
     <color name="colorPrimary">#2196F3</color>
     <color name="colorPrimaryDark">#1976D2</color>
-    <color name="colorAccent">#FF4081</color>
+    <color name="colorPrimaryLight">#BBDEFB</color>
+    
+    <!-- Secondary -->
+    <color name="colorSecondary">#FF6B6B</color>
+    <color name="colorSecondaryDark">#E55A5A</color>
+    
+    <!-- Background -->
+    <color name="background">#F5F7FA</color>
+    <color name="surface">#FFFFFF</color>
+    
+    <!-- Text -->
+    <color name="on_surface">#1A1A2E</color>
+    <color name="on_surface_secondary">#6B7280</color>
+    
+    <!-- Success / Error -->
+    <color name="success">#34C759</color>
+    <color name="error">#FF3B30</color>
+    <color name="warning">#FF9500</color>
+    
+    <!-- Card -->
+    <color name="card_background">#FFFFFF</color>
+    <color name="card_shadow">#1A1A2E</color>
 </resources>
