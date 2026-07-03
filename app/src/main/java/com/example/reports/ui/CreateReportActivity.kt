@@ -1,24 +1,33 @@
 package com.example.reports.ui
 
-import android.app.AlertDialog
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.example.reports.R
-import com.example.reports.data.AppDatabase
-import com.example.reports.data.Report
+import com.example.reports.data.*
 import com.example.reports.utils.Logger
+import com.google.android.material.switchmaterial.SwitchMaterial
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import kotlinx.coroutines.*
 import java.text.SimpleDateFormat
 import java.util.*
 
 class CreateReportActivity : AppCompatActivity() {
     private lateinit var spinnerCategory: Spinner
-    private lateinit var etTitle: EditText
-    private lateinit var etDescription: EditText
+    private lateinit var fieldsContainer: LinearLayout
     private val db by lazy { AppDatabase.getDatabase(this) }
     private val scope = CoroutineScope(Dispatchers.Main)
-    private var categories = listOf<com.example.reports.data.Category>()
+    private var selectedCategory: Category? = null
+    private val fieldValues = mutableMapOf<String, String>()
+    private var lastLocation: Location? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,71 +36,275 @@ class CreateReportActivity : AppCompatActivity() {
         Logger.writeLog("CreateReportActivity started")
         
         spinnerCategory = findViewById(R.id.spinnerCategory)
-        etTitle = findViewById(R.id.etTitle)
-        etDescription = findViewById(R.id.etDescription)
+        fieldsContainer = findViewById(R.id.fieldsContainer)
         val btnSubmit = findViewById<Button>(R.id.btnSubmit)
         
         loadCategories()
         
         btnSubmit.setOnClickListener {
-            val title = etTitle.text.toString().trim()
-            val desc = etDescription.text.toString().trim()
-            
-            if (title.isEmpty()) {
-                Toast.makeText(this, "Введите название", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            
-            if (categories.isEmpty()) {
-                Toast.makeText(this, "Сначала создайте категорию", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            
-            val categoryName = spinnerCategory.selectedItem.toString()
-            val category = categories.find { it.name == categoryName }
-            
-            if (category != null) {
-                scope.launch {
-                    try {
-                        val report = Report(
-                            categoryId = category.id,
-                            title = title,
-                            data = mapOf("description" to desc),
-                            createdAt = System.currentTimeMillis()
-                        )
-                        withContext(Dispatchers.IO) {
-                            db.reportDao().insert(report)
-                        }
-                        Logger.writeLog("Report saved: $title")
-                        Toast.makeText(this@CreateReportActivity, "Отчет сохранен!", Toast.LENGTH_SHORT).show()
-                        finish()
-                    } catch (e: Exception) {
-                        Logger.writeError("Save error", e)
-                        Toast.makeText(this@CreateReportActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
+            Logger.writeLog("Submit report button clicked")
+            validateAndSubmit()
         }
     }
 
     private fun loadCategories() {
         scope.launch {
-            categories = withContext(Dispatchers.IO) {
-                db.categoryDao().getAll()
-            }
-            
-            val names = categories.map { it.name }
-            val adapter = ArrayAdapter(
-                this@CreateReportActivity,
-                android.R.layout.simple_spinner_item,
-                names
-            )
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-            spinnerCategory.adapter = adapter
-            
-            if (categories.isEmpty()) {
-                Toast.makeText(this@CreateReportActivity, "Нет категорий. Создайте их в настройках.", Toast.LENGTH_LONG).show()
+            try {
+                val categories = withContext(Dispatchers.IO) {
+                    db.categoryDao().getAll()
+                }
+                
+                if (categories.isEmpty()) {
+                    Toast.makeText(this@CreateReportActivity, "Сначала создайте категорию", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+                
+                val adapter = ArrayAdapter(
+                    this@CreateReportActivity,
+                    android.R.layout.simple_spinner_item,
+                    categories.map { it.name }
+                )
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                spinnerCategory.adapter = adapter
+                
+                spinnerCategory.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                    override fun onItemSelected(parent: AdapterView<*>, view: android.view.View?, position: Int, id: Long) {
+                        selectedCategory = categories[position]
+                        Logger.writeLog("Category selected: ${selectedCategory?.name}")
+                        loadFieldsForCategory(selectedCategory!!)
+                    }
+                    override fun onNothingSelected(parent: AdapterView<*>) {}
+                }
+                
+                Logger.writeLog("Loaded ${categories.size} categories")
+            } catch (e: Exception) {
+                Logger.writeError("Load categories error", e)
+                Toast.makeText(this@CreateReportActivity, "Ошибка загрузки: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun loadFieldsForCategory(category: Category) {
+        scope.launch {
+            try {
+                val fields = withContext(Dispatchers.IO) {
+                    db.fieldDao().getByCategoryId(category.id)
+                }
+                
+                Logger.writeLog("Loaded ${fields.size} fields for category ${category.name}")
+                
+                runOnUiThread {
+                    fieldsContainer.removeAllViews()
+                    fieldValues.clear()
+                    
+                    if (fields.isEmpty()) {
+                        Toast.makeText(this@CreateReportActivity, "Нет полей для этой категории", Toast.LENGTH_SHORT).show()
+                    }
+                    
+                    fields.forEach { field ->
+                        addFieldView(field)
+                    }
+                }
+            } catch (e: Exception) {
+                Logger.writeError("Load fields error", e)
+                Toast.makeText(this@CreateReportActivity, "Ошибка загрузки полей", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun addFieldView(field: Field) {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, 16, 0, 16)
+        }
+        
+        val label = TextView(this).apply {
+            text = if (field.isRequired) "${field.name} *" else field.name
+            textSize = 16f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
+        container.addView(label)
+        
+        when (field.type) {
+            FieldType.TEXT -> {
+                val input = TextInputEditText(this).apply { 
+                    hint = "Введите текст"
+                    if (field.isRequired) {
+                        addTextChangedListener(object : android.text.TextWatcher {
+                            override fun afterTextChanged(s: android.text.Editable?) {
+                                fieldValues[field.id] = s.toString()
+                            }
+                            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                        })
+                    }
+                }
+                container.addView(TextInputLayout(this).apply { addView(input) })
+                fieldValues[field.id] = ""
+            }
+            
+            FieldType.DATE_TIME -> {
+                val button = Button(this).apply {
+                    text = "Выбрать дату и время"
+                    setOnClickListener {
+                        showDateTimePicker { datetime ->
+                            text = datetime
+                            fieldValues[field.id] = datetime
+                            Logger.writeLog("DateTime selected: $datetime")
+                        }
+                    }
+                }
+                container.addView(button)
+                fieldValues[field.id] = ""
+            }
+            
+            FieldType.LOCATION -> {
+                val button = Button(this).apply {
+                    text = "Получить координаты"
+                    setOnClickListener {
+                        if (checkLocationPermission()) {
+                            getLocation { location ->
+                                val coords = "${location.latitude}, ${location.longitude}"
+                                text = coords
+                                fieldValues[field.id] = coords
+                                Logger.writeLog("Location obtained: $coords")
+                            }
+                        }
+                    }
+                }
+                container.addView(button)
+                fieldValues[field.id] = ""
+            }
+            
+            FieldType.SWITCH_YES_NO -> {
+                val switch = SwitchMaterial(this).apply { text = "Нет" }
+                container.addView(switch)
+                fieldValues[field.id] = "false"
+                switch.setOnCheckedChangeListener { _, isChecked ->
+                    switch.text = if (isChecked) "Да" else "Нет"
+                    fieldValues[field.id] = isChecked.toString()
+                    Logger.writeLog("Switch changed to: ${isChecked}")
+                }
+            }
+            
+            FieldType.NUMBER -> {
+                val input = TextInputEditText(this).apply {
+                    hint = "Введите число"
+                    inputType = android.text.InputType.TYPE_CLASS_NUMBER
+                }
+                container.addView(TextInputLayout(this).apply { addView(input) })
+                fieldValues[field.id] = ""
+                input.addTextChangedListener(object : android.text.TextWatcher {
+                    override fun afterTextChanged(s: android.text.Editable?) {
+                        fieldValues[field.id] = s.toString()
+                    }
+                    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                })
+            }
+            
+            FieldType.PHOTO -> {
+                val button = Button(this).apply {
+                    text = "Выбрать фото"
+                    setOnClickListener {
+                        Toast.makeText(this@CreateReportActivity, "Фото пока не реализовано", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                container.addView(button)
+                fieldValues[field.id] = ""
+            }
+        }
+        fieldsContainer.addView(container)
+    }
+
+    private fun validateAndSubmit() {
+        if (selectedCategory == null) {
+            Toast.makeText(this, "Выберите категорию", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        // Проверяем обязательные поля
+        val missingFields = fieldValues.filter { it.value.isEmpty() }
+        if (missingFields.isNotEmpty()) {
+            Toast.makeText(this, "Заполните все обязательные поля", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val report = Report(
+            categoryId = selectedCategory!!.id,
+            title = "Отчет ${SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date())}",
+            data = fieldValues,
+            latitude = lastLocation?.latitude,
+            longitude = lastLocation?.longitude,
+            synced = false
+        )
+        
+        Logger.writeLog("Submitting report: ${report.title}")
+        
+        scope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    db.reportDao().insert(report)
+                }
+                Logger.writeLog("Report saved successfully")
+                Toast.makeText(this@CreateReportActivity, "Отчет сохранен!", Toast.LENGTH_SHORT).show()
+                finish()
+            } catch (e: Exception) {
+                Logger.writeError("Save report error", e)
+                Toast.makeText(this@CreateReportActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun showDateTimePicker(callback: (String) -> Unit) {
+        val calendar = Calendar.getInstance()
+        DatePickerDialog(
+            this,
+            { _, year, month, day ->
+                TimePickerDialog(
+                    this,
+                    { _, hour, minute ->
+                        val datetime = Calendar.getInstance().apply {
+                            set(year, month, day, hour, minute)
+                        }
+                        val format = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+                        callback(format.format(datetime.time))
+                    },
+                    calendar.get(Calendar.HOUR_OF_DAY),
+                    calendar.get(Calendar.MINUTE),
+                    true
+                ).show()
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
+    private fun checkLocationPermission(): Boolean {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 100)
+            return false
+        }
+        return true
+    }
+
+    private fun getLocation(callback: (Location) -> Unit) {
+        if (!checkLocationPermission()) return
+        
+        val client = LocationServices.getFusedLocationProviderClient(this)
+        client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+            .addOnSuccessListener { location ->
+                if (location != null) {
+                    lastLocation = location
+                    callback(location)
+                } else {
+                    Toast.makeText(this, "Не удалось получить координаты", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Ошибка GPS: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 }

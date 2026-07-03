@@ -54,4 +54,10 @@ object Logger {
         writeLog(errorMsg)
         android.util.Log.e("ReportsApp", errorMsg)
     }
+
+    fun getLogFile(): File? = logFile
+    
+    fun getLogContent(): String {
+        return logFile?.readText() ?: "Логов нет"
+    }
 }

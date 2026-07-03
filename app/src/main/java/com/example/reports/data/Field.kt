@@ -11,7 +11,6 @@ data class Field(
     val name: String,
     val type: FieldType,
     val isRequired: Boolean = true,
-    val categoryIds: List<String> = emptyList(),
     val createdAt: Long = System.currentTimeMillis()
 )
 

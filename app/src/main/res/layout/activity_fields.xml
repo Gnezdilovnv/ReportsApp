@@ -4,18 +4,19 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="@color/background">
+    android:background="#F5F7FA">
     
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/fields"
+        android:text="⚙️ Поля"
         android:textSize="20sp"
         android:textStyle="bold"
+        android:textColor="#9C27B0"
         android:layout_marginBottom="16dp" />
     
-    <ListView
-        android:id="@+id/listViewFields"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViewFields"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
@@ -24,6 +25,7 @@
         android:id="@+id/btnAddField"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="+ Добавить поле" />
+        android:text="➕ Добавить поле"
+        android:backgroundTint="#9C27B0" />
     
 </LinearLayout>

@@ -4,18 +4,20 @@ import android.app.AlertDialog
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.reports.R
 import com.example.reports.data.AppDatabase
 import com.example.reports.data.Category
+import com.example.reports.ui.adapters.CategoriesAdapter
 import com.example.reports.utils.Logger
 import kotlinx.coroutines.*
 
 class CategoriesActivity : AppCompatActivity() {
-    private lateinit var listView: ListView
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var adapter: CategoriesAdapter
     private val db by lazy { AppDatabase.getDatabase(this) }
     private val scope = CoroutineScope(Dispatchers.Main)
-    private var categories = listOf<Category>()
-    private lateinit var adapter: ArrayAdapter<String>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,59 +25,69 @@ class CategoriesActivity : AppCompatActivity() {
         
         Logger.writeLog("CategoriesActivity started")
         
-        listView = findViewById(R.id.listViewCategories)
-        adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, mutableListOf())
-        listView.adapter = adapter
-        
-        // Клик для редактирования
-        listView.setOnItemClickListener { _, _, position, _ ->
-            val category = categories[position]
-            showEditDialog(category)
-        }
-        
-        // Долгий клик для удаления
-        listView.setOnItemLongClickListener { _, _, position, _ ->
-            val category = categories[position]
-            showDeleteDialog(category)
-            true
-        }
-        
+        recyclerView = findViewById(R.id.recyclerViewCategories)
+        recyclerView.layoutManager = LinearLayoutManager(this)
+
+        adapter = CategoriesAdapter(
+            onEdit = { category ->
+                Logger.writeLog("Edit category: ${category.name}")
+                showEditCategoryDialog(category)
+            },
+            onDelete = { category ->
+                Logger.writeLog("Delete category: ${category.name}")
+                showDeleteCategoryDialog(category)
+            }
+        )
+        recyclerView.adapter = adapter
+
         findViewById<Button>(R.id.btnAddCategory).setOnClickListener {
-            showAddDialog()
+            Logger.writeLog("Add category button clicked")
+            showAddCategoryDialog()
         }
-        
+
         loadCategories()
     }
 
     private fun loadCategories() {
         scope.launch {
-            categories = withContext(Dispatchers.IO) {
-                db.categoryDao().getAll()
+            try {
+                val categories = withContext(Dispatchers.IO) {
+                    db.categoryDao().getAll()
+                }
+                adapter.submitList(categories)
+                Logger.writeLog("Loaded ${categories.size} categories")
+            } catch (e: Exception) {
+                Logger.writeError("Load categories error", e)
+                Toast.makeText(this@CategoriesActivity, "Ошибка загрузки", Toast.LENGTH_SHORT).show()
             }
-            val names = categories.map { "${it.name} (${it.createdAt})" }
-            adapter.clear()
-            adapter.addAll(names)
-            adapter.notifyDataSetChanged()
-            Logger.writeLog("Loaded ${categories.size} categories")
         }
     }
 
-    private fun showAddDialog() {
+    private fun showAddCategoryDialog() {
         val input = EditText(this)
         input.hint = "Название категории"
-        
+
         AlertDialog.Builder(this)
             .setTitle("Новая категория")
             .setView(input)
             .setPositiveButton("Создать") { _, _ ->
                 val name = input.text.toString().trim()
-                if (name.isNotEmpty()) {
-                    scope.launch {
+                if (name.isEmpty()) {
+                    Toast.makeText(this, "Введите название", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                
+                scope.launch {
+                    try {
                         withContext(Dispatchers.IO) {
                             db.categoryDao().insert(Category(name = name))
                         }
                         Logger.writeLog("Category created: $name")
                         loadCategories()
+                        Toast.makeText(this@CategoriesActivity, "Категория создана", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Logger.writeError("Create category error", e)
+                        Toast.makeText(this@CategoriesActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -83,22 +95,31 @@ class CategoriesActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showEditDialog(category: Category) {
+    private fun showEditCategoryDialog(category: Category) {
         val input = EditText(this)
         input.setText(category.name)
-        
+
         AlertDialog.Builder(this)
             .setTitle("Редактировать категорию")
             .setView(input)
             .setPositiveButton("Сохранить") { _, _ ->
                 val name = input.text.toString().trim()
-                if (name.isNotEmpty()) {
-                    scope.launch {
+                if (name.isEmpty()) {
+                    Toast.makeText(this, "Введите название", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                
+                scope.launch {
+                    try {
                         withContext(Dispatchers.IO) {
                             db.categoryDao().update(category.copy(name = name))
                         }
                         Logger.writeLog("Category updated: ${category.name} -> $name")
                         loadCategories()
+                        Toast.makeText(this@CategoriesActivity, "Категория обновлена", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Logger.writeError("Update category error", e)
+                        Toast.makeText(this@CategoriesActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -106,17 +127,23 @@ class CategoriesActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showDeleteDialog(category: Category) {
+    private fun showDeleteCategoryDialog(category: Category) {
         AlertDialog.Builder(this)
             .setTitle("Удалить категорию?")
             .setMessage("Все отчеты в этой категории будут удалены")
             .setPositiveButton("Удалить") { _, _ ->
                 scope.launch {
-                    withContext(Dispatchers.IO) {
-                        db.categoryDao().delete(category)
+                    try {
+                        withContext(Dispatchers.IO) {
+                            db.categoryDao().delete(category)
+                        }
+                        Logger.writeLog("Category deleted: ${category.name}")
+                        loadCategories()
+                        Toast.makeText(this@CategoriesActivity, "Категория удалена", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Logger.writeError("Delete category error", e)
+                        Toast.makeText(this@CategoriesActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
-                    Logger.writeLog("Category deleted: ${category.name}")
-                    loadCategories()
                 }
             }
             .setNegativeButton("Отмена", null)

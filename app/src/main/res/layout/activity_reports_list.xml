@@ -4,14 +4,15 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="@color/background">
+    android:background="#F5F7FA">
     
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/reports_list"
+        android:text="📄 Все отчеты"
         android:textSize="20sp"
         android:textStyle="bold"
+        android:textColor="#4CAF50"
         android:layout_marginBottom="16dp" />
     
     <ListView

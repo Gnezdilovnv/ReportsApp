@@ -4,18 +4,19 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="16dp"
-    android:background="@color/background">
+    android:background="#F5F7FA">
     
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/categories"
+        android:text="📂 Категории"
         android:textSize="20sp"
         android:textStyle="bold"
+        android:textColor="#FF9800"
         android:layout_marginBottom="16dp" />
     
-    <ListView
-        android:id="@+id/listViewCategories"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViewCategories"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
@@ -24,6 +25,7 @@
         android:id="@+id/btnAddCategory"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="+ Добавить категорию" />
+        android:text="➕ Добавить категорию"
+        android:backgroundTint="#FF9800" />
     
 </LinearLayout>

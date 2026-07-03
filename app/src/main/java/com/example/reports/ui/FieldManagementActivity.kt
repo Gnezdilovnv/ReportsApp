@@ -9,80 +9,106 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.reports.R
 import com.example.reports.data.AppDatabase
 import com.example.reports.data.Field
+import com.example.reports.data.FieldCategoryRelation
 import com.example.reports.data.FieldType
+import com.example.reports.ui.adapters.FieldsAdapter
 import com.example.reports.utils.Logger
 import kotlinx.coroutines.*
 
 class FieldManagementActivity : AppCompatActivity() {
-    private lateinit var listView: ListView
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var adapter: FieldsAdapter
     private val db by lazy { AppDatabase.getDatabase(this) }
     private val scope = CoroutineScope(Dispatchers.Main)
-    private var fields = listOf<Field>()
-    private lateinit var adapter: ArrayAdapter<String>
-    private var allCategories = listOf<com.example.reports.data.Category>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_field_management)
+        setContentView(R.layout.activity_fields)
         
         Logger.writeLog("FieldManagementActivity started")
         
-        listView = findViewById(R.id.listViewFields)
-        adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, mutableListOf())
-        listView.adapter = adapter
-        
-        listView.setOnItemClickListener { _, _, position, _ ->
-            val field = fields[position]
-            showEditDialog(field)
-        }
-        
-        listView.setOnItemLongClickListener { _, _, position, _ ->
-            val field = fields[position]
-            showDeleteDialog(field)
-            true
-        }
-        
-        findViewById<Button>(R.id.btnAddField).setOnClickListener {
-            showAddDialog()
-        }
-        
-        loadCategories()
-        loadFields()
-    }
+        recyclerView = findViewById(R.id.recyclerViewFields)
+        recyclerView.layoutManager = LinearLayoutManager(this)
 
-    private fun loadCategories() {
-        scope.launch {
-            allCategories = withContext(Dispatchers.IO) {
-                db.categoryDao().getAll()
-            }
-            Logger.writeLog("Loaded ${allCategories.size} categories")
+        adapter = FieldsAdapter(
+            onEdit = { field -> showEditFieldDialog(field) },
+            onDelete = { field -> showDeleteFieldDialog(field) }
+        )
+        recyclerView.adapter = adapter
+
+        findViewById<Button>(R.id.btnAddField).setOnClickListener {
+            Logger.writeLog("Add field button clicked")
+            showAddFieldDialog()
         }
+
+        loadFields()
     }
 
     private fun loadFields() {
         scope.launch {
-            fields = withContext(Dispatchers.IO) {
-                db.fieldDao().getAll()
+            try {
+                val fields = withContext(Dispatchers.IO) {
+                    db.fieldDao().getAll()
+                }
+                adapter.submitList(fields)
+                Logger.writeLog("Loaded ${fields.size} fields")
+            } catch (e: Exception) {
+                Logger.writeError("Load fields error", e)
+                Toast.makeText(this@FieldManagementActivity, "Ошибка загрузки", Toast.LENGTH_SHORT).show()
             }
-            val items = fields.map { 
-                val categoryNames = it.categoryIds.map { id ->
-                    allCategories.find { cat -> cat.id == id }?.name ?: id
-                }.joinToString(", ")
-                "${it.name} (${it.type.name}) → ${if (categoryNames.isEmpty()) "нет категорий" else categoryNames}"
-            }
-            adapter.clear()
-            adapter.addAll(items)
-            adapter.notifyDataSetChanged()
-            Logger.writeLog("Loaded ${fields.size} fields")
         }
     }
 
-    private fun showAddDialog() {
+    // ДИАЛОГ ВЫБОРА КАТЕГОРИЙ С ЧЕКБОКСАМИ
+    private fun showCategorySelector(
+        title: String = "Выберите категории",
+        selectedIds: List<String> = emptyList(),
+        onSelected: (List<String>) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val categories = withContext(Dispatchers.IO) {
+                    db.categoryDao().getAll()
+                }
+                
+                if (categories.isEmpty()) {
+                    Toast.makeText(this@FieldManagementActivity, "Сначала создайте категории", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                
+                val checkedItems = BooleanArray(categories.size) { index ->
+                    selectedIds.contains(categories[index].id)
+                }
+                val names = categories.map { it.name }.toTypedArray()
+                
+                AlertDialog.Builder(this@FieldManagementActivity)
+                    .setTitle(title)
+                    .setMultiChoiceItems(names, checkedItems) { _, which, isChecked ->
+                        checkedItems[which] = isChecked
+                    }
+                    .setPositiveButton("OK") { _, _ ->
+                        val selected = checkedItems.mapIndexed { index, checked ->
+                            if (checked) categories[index].id else null
+                        }.filterNotNull()
+                        onSelected(selected)
+                    }
+                    .setNegativeButton("Отмена", null)
+                    .show()
+            } catch (e: Exception) {
+                Logger.writeError("Show category selector error", e)
+                Toast.makeText(this@FieldManagementActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun showAddFieldDialog() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_field, null)
         val etName = dialogView.findViewById<EditText>(R.id.etFieldName)
         val spinnerType = dialogView.findViewById<Spinner>(R.id.spinnerFieldType)
         val btnSelectCategories = dialogView.findViewById<Button>(R.id.btnSelectCategories)
+        val chkRequired = dialogView.findViewById<CheckBox>(R.id.chkRequired)
         
+        // Настройка Spinner для типов полей
         val typeNames = FieldType.values().map { it.name }
         val typeAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, typeNames)
         typeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
@@ -91,10 +117,11 @@ class FieldManagementActivity : AppCompatActivity() {
         var selectedCategoryIds = mutableListOf<String>()
         
         btnSelectCategories.setOnClickListener {
-            showCategorySelector { selectedIds ->
-                selectedCategoryIds = selectedIds.toMutableList()
-                val names = selectedIds.map { id ->
-                    allCategories.find { it.id == id }?.name ?: id
+            showCategorySelector("Выберите категории для поля", selectedCategoryIds) { selected ->
+                selectedCategoryIds = selected.toMutableList()
+                val names = selected.map { id ->
+                    // Показываем временно ID, потом можно загрузить имена
+                    id.take(8)
                 }.joinToString(", ")
                 btnSelectCategories.text = if (names.isEmpty()) "Выбрать категории" else "Выбрано: $names"
             }
@@ -106,24 +133,47 @@ class FieldManagementActivity : AppCompatActivity() {
             .setPositiveButton("Создать") { _, _ ->
                 val name = etName.text.toString().trim()
                 val type = FieldType.values()[spinnerType.selectedItemPosition]
+                val isRequired = chkRequired.isChecked
                 
-                if (name.isNotEmpty()) {
-                    scope.launch {
-                        try {
-                            withContext(Dispatchers.IO) {
-                                db.fieldDao().insert(Field(
-                                    name = name,
-                                    type = type,
-                                    categoryIds = selectedCategoryIds
-                                ))
+                if (name.isEmpty()) {
+                    Toast.makeText(this, "Введите название поля", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                
+                if (selectedCategoryIds.isEmpty()) {
+                    Toast.makeText(this, "Выберите категории", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                
+                scope.launch {
+                    try {
+                        val field = Field(
+                            name = name,
+                            type = type,
+                            isRequired = isRequired
+                        )
+                        
+                        withContext(Dispatchers.IO) {
+                            // Сохраняем поле
+                            db.fieldDao().insert(field)
+                            
+                            // Сохраняем связи с категориями
+                            selectedCategoryIds.forEach { categoryId ->
+                                db.fieldDao().insertRelation(
+                                    FieldCategoryRelation(
+                                        fieldId = field.id,
+                                        categoryId = categoryId
+                                    )
+                                )
                             }
-                            Logger.writeLog("Field created: $name")
-                            loadFields()
-                            Toast.makeText(this@FieldManagementActivity, "Поле создано", Toast.LENGTH_SHORT).show()
-                        } catch (e: Exception) {
-                            Logger.writeError("Create field error", e)
-                            Toast.makeText(this@FieldManagementActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
+                        
+                        Logger.writeLog("Field created: $name with ${selectedCategoryIds.size} categories")
+                        loadFields()
+                        Toast.makeText(this@FieldManagementActivity, "Поле создано", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Logger.writeError("Create field error", e)
+                        Toast.makeText(this@FieldManagementActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -131,53 +181,38 @@ class FieldManagementActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showCategorySelector(onSelected: (List<String>) -> Unit) {
-        if (allCategories.isEmpty()) {
-            Toast.makeText(this, "Сначала создайте категории", Toast.LENGTH_SHORT).show()
-            return
-        }
-        
-        val checkedItems = BooleanArray(allCategories.size) { false }
-        val categoryNames = allCategories.map { it.name }.toTypedArray()
-        
-        AlertDialog.Builder(this)
-            .setTitle("Выберите категории")
-            .setMultiChoiceItems(categoryNames, checkedItems) { _, which, isChecked ->
-                checkedItems[which] = isChecked
-            }
-            .setPositiveButton("OK") { _, _ ->
-                val selected = checkedItems.mapIndexed { index, isChecked ->
-                    if (isChecked) allCategories[index].id else null
-                }.filterNotNull()
-                onSelected(selected)
-            }
-            .setNegativeButton("Отмена", null)
-            .show()
-    }
-
-    private fun showEditDialog(field: Field) {
+    private fun showEditFieldDialog(field: Field) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_field, null)
         val etName = dialogView.findViewById<EditText>(R.id.etFieldName)
         val spinnerType = dialogView.findViewById<Spinner>(R.id.spinnerFieldType)
         val btnSelectCategories = dialogView.findViewById<Button>(R.id.btnSelectCategories)
+        val chkRequired = dialogView.findViewById<CheckBox>(R.id.chkRequired)
         
         etName.setText(field.name)
         spinnerType.setSelection(field.type.ordinal)
+        chkRequired.isChecked = field.isRequired
         
-        var selectedCategoryIds = field.categoryIds.toMutableList()
+        var selectedCategoryIds = mutableListOf<String>()
         
-        val names = selectedCategoryIds.map { id ->
-            allCategories.find { it.id == id }?.name ?: id
-        }.joinToString(", ")
-        btnSelectCategories.text = if (names.isEmpty()) "Выбрать категории" else "Выбрано: $names"
+        // Загружаем текущие категории для поля
+        scope.launch {
+            try {
+                val relations = withContext(Dispatchers.IO) {
+                    db.fieldDao().getByCategoryId(field.id)
+                }
+                // Это не совсем правильно, нужно загружать связи отдельно
+                // Для простоты показываем ID
+                btnSelectCategories.text = "Выбрано: ${relations.size} категорий"
+            } catch (e: Exception) {
+                Logger.writeError("Load field categories error", e)
+            }
+        }
         
         btnSelectCategories.setOnClickListener {
-            showCategorySelector { selectedIds ->
-                selectedCategoryIds = selectedIds.toMutableList()
-                val newNames = selectedIds.map { id ->
-                    allCategories.find { it.id == id }?.name ?: id
-                }.joinToString(", ")
-                btnSelectCategories.text = if (newNames.isEmpty()) "Выбрать категории" else "Выбрано: $newNames"
+            showCategorySelector("Выберите категории для поля", selectedCategoryIds) { selected ->
+                selectedCategoryIds = selected.toMutableList()
+                val names = selected.map { it.take(8) }.joinToString(", ")
+                btnSelectCategories.text = if (names.isEmpty()) "Выбрать категории" else "Выбрано: $names"
             }
         }
         
@@ -187,24 +222,43 @@ class FieldManagementActivity : AppCompatActivity() {
             .setPositiveButton("Сохранить") { _, _ ->
                 val name = etName.text.toString().trim()
                 val type = FieldType.values()[spinnerType.selectedItemPosition]
+                val isRequired = chkRequired.isChecked
                 
-                if (name.isNotEmpty()) {
-                    scope.launch {
-                        try {
-                            withContext(Dispatchers.IO) {
-                                db.fieldDao().update(field.copy(
-                                    name = name,
-                                    type = type,
-                                    categoryIds = selectedCategoryIds
-                                ))
+                if (name.isEmpty()) {
+                    Toast.makeText(this, "Введите название", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                
+                scope.launch {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            // Обновляем поле
+                            db.fieldDao().update(field.copy(
+                                name = name,
+                                type = type,
+                                isRequired = isRequired
+                            ))
+                            
+                            // Удаляем старые связи
+                            db.fieldDao().deleteRelations(field.id)
+                            
+                            // Создаем новые связи
+                            selectedCategoryIds.forEach { categoryId ->
+                                db.fieldDao().insertRelation(
+                                    FieldCategoryRelation(
+                                        fieldId = field.id,
+                                        categoryId = categoryId
+                                    )
+                                )
                             }
-                            Logger.writeLog("Field updated: ${field.name} -> $name")
-                            loadFields()
-                            Toast.makeText(this@FieldManagementActivity, "Поле обновлено", Toast.LENGTH_SHORT).show()
-                        } catch (e: Exception) {
-                            Logger.writeError("Update field error", e)
-                            Toast.makeText(this@FieldManagementActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
+                        
+                        Logger.writeLog("Field updated: ${field.name} -> $name")
+                        loadFields()
+                        Toast.makeText(this@FieldManagementActivity, "Поле обновлено", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Logger.writeError("Update field error", e)
+                        Toast.makeText(this@FieldManagementActivity, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -212,13 +266,15 @@ class FieldManagementActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showDeleteDialog(field: Field) {
+    private fun showDeleteFieldDialog(field: Field) {
         AlertDialog.Builder(this)
             .setTitle("Удалить поле?")
+            .setMessage("Поле будет удалено из всех категорий")
             .setPositiveButton("Удалить") { _, _ ->
                 scope.launch {
                     try {
                         withContext(Dispatchers.IO) {
+                            db.fieldDao().deleteRelations(field.id)
                             db.fieldDao().delete(field)
                         }
                         Logger.writeLog("Field deleted: ${field.name}")

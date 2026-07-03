@@ -29,29 +29,38 @@ class ReportsListActivity : AppCompatActivity() {
 
     private fun loadReports() {
         scope.launch {
-            val reports = withContext(Dispatchers.IO) {
-                db.reportDao().getAll()
-            }
-            
-            if (reports.isEmpty()) {
-                Toast.makeText(this@ReportsListActivity, "Нет отчетов", Toast.LENGTH_SHORT).show()
-            } else {
-                val items = reports.map { report ->
-                    val date = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date(report.createdAt))
-                    "${report.title} ($date)"
+            try {
+                val reports = withContext(Dispatchers.IO) {
+                    db.reportDao().getAll()
                 }
+                
+                if (reports.isEmpty()) {
+                    Toast.makeText(this@ReportsListActivity, "Нет отчетов", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+                
+                val format = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+                val items = reports.map { report ->
+                    "${report.title} (${format.format(Date(report.createdAt))})"
+                }
+                
                 val adapter = ArrayAdapter(this@ReportsListActivity, android.R.layout.simple_list_item_1, items)
                 listView.adapter = adapter
                 
                 listView.setOnItemClickListener { _, _, position, _ ->
                     val report = reports[position]
+                    val data = report.data.map { "${it.key}: ${it.value}" }.joinToString("\n")
                     Toast.makeText(
                         this@ReportsListActivity,
-                        "Данные: ${report.data}",
+                        "Отчет: ${report.title}\n\nДанные:\n$data",
                         Toast.LENGTH_LONG
                     ).show()
                 }
+                
                 Logger.writeLog("Loaded ${reports.size} reports")
+            } catch (e: Exception) {
+                Logger.writeError("Load reports error", e)
+                Toast.makeText(this@ReportsListActivity, "Ошибка загрузки: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }

@@ -4,16 +4,6 @@ import androidx.room.TypeConverter
 
 class Converters {
     @TypeConverter
-    fun fromStringList(value: String): List<String> {
-        return if (value.isEmpty()) emptyList() else value.split(",")
-    }
-
-    @TypeConverter
-    fun fromStringList(list: List<String>): String {
-        return list.joinToString(",")
-    }
-
-    @TypeConverter
     fun fromStringMap(value: String): Map<String, String> {
         return if (value.isEmpty()) emptyMap() else 
             value.split(";").associate {
