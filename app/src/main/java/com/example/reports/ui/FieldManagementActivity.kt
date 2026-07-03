@@ -4,10 +4,13 @@ import android.app.AlertDialog
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.reports.R
 import com.example.reports.data.AppDatabase
 import com.example.reports.data.Field
 import com.example.reports.data.FieldType
+import com.example.reports.ui.adapters.CategoryCheckAdapter
 import com.example.reports.utils.Logger
 import kotlinx.coroutines.*
 
@@ -17,6 +20,7 @@ class FieldManagementActivity : AppCompatActivity() {
     private val scope = CoroutineScope(Dispatchers.Main)
     private var fields = listOf<Field>()
     private lateinit var adapter: ArrayAdapter<String>
+    private var allCategories = listOf<com.example.reports.data.Category>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,13 +32,11 @@ class FieldManagementActivity : AppCompatActivity() {
         adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, mutableListOf())
         listView.adapter = adapter
         
-        // Клик для редактирования
         listView.setOnItemClickListener { _, _, position, _ ->
             val field = fields[position]
             showEditDialog(field)
         }
         
-        // Долгий клик для удаления
         listView.setOnItemLongClickListener { _, _, position, _ ->
             val field = fields[position]
             showDeleteDialog(field)
@@ -45,7 +47,17 @@ class FieldManagementActivity : AppCompatActivity() {
             showAddDialog()
         }
         
+        loadCategories()
         loadFields()
+    }
+
+    private fun loadCategories() {
+        scope.launch {
+            allCategories = withContext(Dispatchers.IO) {
+                db.categoryDao().getAll()
+            }
+            Logger.writeLog("Loaded ${allCategories.size} categories for selection")
+        }
     }
 
     private fun loadFields() {
@@ -53,7 +65,12 @@ class FieldManagementActivity : AppCompatActivity() {
             fields = withContext(Dispatchers.IO) {
                 db.fieldDao().getAll()
             }
-            val items = fields.map { "${it.name} (${it.type.name}) - ${it.categoryIds}" }
+            val items = fields.map { 
+                val categoryNames = it.categoryIds.map { id ->
+                    allCategories.find { cat -> cat.id == id }?.name ?: id
+                }.joinToString(", ")
+                "${it.name} (${it.type.name}) → ${if (categoryNames.isEmpty()) "нет категорий" else categoryNames}"
+            }
             adapter.clear()
             adapter.addAll(items)
             adapter.notifyDataSetChanged()
@@ -65,12 +82,24 @@ class FieldManagementActivity : AppCompatActivity() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_field, null)
         val etName = dialogView.findViewById<EditText>(R.id.etFieldName)
         val spinnerType = dialogView.findViewById<Spinner>(R.id.spinnerFieldType)
-        val etCategories = dialogView.findViewById<EditText>(R.id.etCategoryIds)
+        val btnSelectCategories = dialogView.findViewById<Button>(R.id.btnSelectCategories)
         
         val typeNames = FieldType.values().map { it.name }
         val typeAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, typeNames)
         typeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinnerType.adapter = typeAdapter
+        
+        var selectedCategoryIds = mutableListOf<String>()
+        
+        btnSelectCategories.setOnClickListener {
+            showCategorySelector { selectedIds ->
+                selectedCategoryIds = selectedIds.toMutableList()
+                val names = selectedIds.map { id ->
+                    allCategories.find { it.id == id }?.name ?: id
+                }.joinToString(", ")
+                btnSelectCategories.text = if (names.isEmpty()) "Выбрать категории" else "Выбрано: $names"
+            }
+        }
         
         AlertDialog.Builder(this)
             .setTitle("Новое поле")
@@ -78,10 +107,6 @@ class FieldManagementActivity : AppCompatActivity() {
             .setPositiveButton("Создать") { _, _ ->
                 val name = etName.text.toString().trim()
                 val type = FieldType.values()[spinnerType.selectedItemPosition]
-                val categoryIds = etCategories.text.toString()
-                    .split(",")
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() }
                 
                 if (name.isNotEmpty()) {
                     scope.launch {
@@ -90,10 +115,10 @@ class FieldManagementActivity : AppCompatActivity() {
                                 db.fieldDao().insert(Field(
                                     name = name,
                                     type = type,
-                                    categoryIds = categoryIds
+                                    categoryIds = selectedCategoryIds
                                 ))
                             }
-                            Logger.writeLog("Field created: $name")
+                            Logger.writeLog("Field created: $name with categories: $selectedCategoryIds")
                             loadFields()
                             Toast.makeText(this@FieldManagementActivity, "Поле создано", Toast.LENGTH_SHORT).show()
                         } catch (e: Exception) {
@@ -107,15 +132,60 @@ class FieldManagementActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun showCategorySelector(onSelected: (List<String>) -> Unit) {
+        if (allCategories.isEmpty()) {
+            Toast.makeText(this, "Сначала создайте категории", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val dialogView = layoutInflater.inflate(R.layout.dialog_category_selector, null)
+        val recyclerView = dialogView.findViewById<RecyclerView>(R.id.recyclerCategories)
+        val chkAll = dialogView.findViewById<CheckBox>(R.id.chkAllCategories)
+        
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        val adapter = CategoryCheckAdapter(allCategories) { _, _ -> }
+        recyclerView.adapter = adapter
+        
+        chkAll.setOnCheckedChangeListener { _, isChecked ->
+            adapter.selectAll(isChecked)
+        }
+        
+        AlertDialog.Builder(this)
+            .setTitle("Выберите категории")
+            .setView(dialogView)
+            .setPositiveButton("OK") { _, _ ->
+                val selected = adapter.getSelectedCategoryIds()
+                onSelected(selected)
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
     private fun showEditDialog(field: Field) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_field, null)
         val etName = dialogView.findViewById<EditText>(R.id.etFieldName)
         val spinnerType = dialogView.findViewById<Spinner>(R.id.spinnerFieldType)
-        val etCategories = dialogView.findViewById<EditText>(R.id.etCategoryIds)
+        val btnSelectCategories = dialogView.findViewById<Button>(R.id.btnSelectCategories)
         
         etName.setText(field.name)
         spinnerType.setSelection(field.type.ordinal)
-        etCategories.setText(field.categoryIds.joinToString(","))
+        
+        var selectedCategoryIds = field.categoryIds.toMutableList()
+        
+        val names = selectedCategoryIds.map { id ->
+            allCategories.find { it.id == id }?.name ?: id
+        }.joinToString(", ")
+        btnSelectCategories.text = if (names.isEmpty()) "Выбрать категории" else "Выбрано: $names"
+        
+        btnSelectCategories.setOnClickListener {
+            showCategorySelector { selectedIds ->
+                selectedCategoryIds = selectedIds.toMutableList()
+                val newNames = selectedIds.map { id ->
+                    allCategories.find { it.id == id }?.name ?: id
+                }.joinToString(", ")
+                btnSelectCategories.text = if (newNames.isEmpty()) "Выбрать категории" else "Выбрано: $newNames"
+            }
+        }
         
         AlertDialog.Builder(this)
             .setTitle("Редактировать поле")
@@ -123,10 +193,6 @@ class FieldManagementActivity : AppCompatActivity() {
             .setPositiveButton("Сохранить") { _, _ ->
                 val name = etName.text.toString().trim()
                 val type = FieldType.values()[spinnerType.selectedItemPosition]
-                val categoryIds = etCategories.text.toString()
-                    .split(",")
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() }
                 
                 if (name.isNotEmpty()) {
                     scope.launch {
@@ -135,7 +201,7 @@ class FieldManagementActivity : AppCompatActivity() {
                                 db.fieldDao().update(field.copy(
                                     name = name,
                                     type = type,
-                                    categoryIds = categoryIds
+                                    categoryIds = selectedCategoryIds
                                 ))
                             }
                             Logger.writeLog("Field updated: ${field.name} -> $name")

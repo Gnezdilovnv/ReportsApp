@@ -15,7 +15,8 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Тип поля" />
+        android:text="Тип поля"
+        android:layout_marginBottom="8dp" />
     
     <Spinner
         android:id="@+id/spinnerFieldType"
@@ -23,10 +24,18 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp" />
     
-    <EditText
-        android:id="@+id/etCategoryIds"
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Категории"
+        android:layout_marginBottom="8dp" />
+    
+    <Button
+        android:id="@+id/btnSelectCategories"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="ID категорий (через запятую)" />
+        android:text="Выбрать категории"
+        android:backgroundTint="#2196F3"
+        android:textColor="#FFFFFF" />
     
 </LinearLayout>
