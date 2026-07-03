@@ -10,7 +10,6 @@ import com.example.reports.R
 import com.example.reports.data.AppDatabase
 import com.example.reports.data.Field
 import com.example.reports.data.FieldType
-import com.example.reports.ui.adapters.CategoryCheckAdapter
 import com.example.reports.utils.Logger
 import kotlinx.coroutines.*
 
@@ -56,7 +55,7 @@ class FieldManagementActivity : AppCompatActivity() {
             allCategories = withContext(Dispatchers.IO) {
                 db.categoryDao().getAll()
             }
-            Logger.writeLog("Loaded ${allCategories.size} categories for selection")
+            Logger.writeLog("Loaded ${allCategories.size} categories")
         }
     }
 
@@ -118,7 +117,7 @@ class FieldManagementActivity : AppCompatActivity() {
                                     categoryIds = selectedCategoryIds
                                 ))
                             }
-                            Logger.writeLog("Field created: $name with categories: $selectedCategoryIds")
+                            Logger.writeLog("Field created: $name")
                             loadFields()
                             Toast.makeText(this@FieldManagementActivity, "Поле создано", Toast.LENGTH_SHORT).show()
                         } catch (e: Exception) {
@@ -138,23 +137,18 @@ class FieldManagementActivity : AppCompatActivity() {
             return
         }
         
-        val dialogView = layoutInflater.inflate(R.layout.dialog_category_selector, null)
-        val recyclerView = dialogView.findViewById<RecyclerView>(R.id.recyclerCategories)
-        val chkAll = dialogView.findViewById<CheckBox>(R.id.chkAllCategories)
-        
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        val adapter = CategoryCheckAdapter(allCategories) { _, _ -> }
-        recyclerView.adapter = adapter
-        
-        chkAll.setOnCheckedChangeListener { _, isChecked ->
-            adapter.selectAll(isChecked)
-        }
+        val checkedItems = BooleanArray(allCategories.size) { false }
+        val categoryNames = allCategories.map { it.name }.toTypedArray()
         
         AlertDialog.Builder(this)
             .setTitle("Выберите категории")
-            .setView(dialogView)
+            .setMultiChoiceItems(categoryNames, checkedItems) { _, which, isChecked ->
+                checkedItems[which] = isChecked
+            }
             .setPositiveButton("OK") { _, _ ->
-                val selected = adapter.getSelectedCategoryIds()
+                val selected = checkedItems.mapIndexed { index, isChecked ->
+                    if (isChecked) allCategories[index].id else null
+                }.filterNotNull()
                 onSelected(selected)
             }
             .setNegativeButton("Отмена", null)
