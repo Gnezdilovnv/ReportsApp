@@ -1,9 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#2196F3</color>
-    <color name="colorPrimaryDark">#1976D2</color>
-    <color name="colorAccent">#FF4081</color>
-    <color name="background">#FFFFFF</color>
-    <color name="textPrimary">#212121</color>
-    <color name="textSecondary">#757575</color>
+    <!-- iOS 14 Colors -->
+    <color name="ios_blue">#007AFF</color>
+    <color name="ios_red">#FF3B30</color>
+    <color name="ios_green">#34C759</color>
+    <color name="ios_orange">#FF9500</color>
+    <color name="ios_purple">#AF52DE</color>
+    <color name="ios_pink">#FF2D55</color>
+    <color name="ios_yellow">#FFCC00</color>
+    <color name="ios_gray">#8E8E93</color>
+    <color name="ios_light_gray">#F2F2F7</color>
+    <color name="ios_dark_gray">#1C1C1E</color>
+    <color name="ios_separator">#C6C6C8</color>
+    <color name="ios_white">#FFFFFF</color>
+    <color name="ios_black">#000000</color>
+    <color name="ios_label">#000000</color>
+    <color name="ios_secondary_label">#3C3C43</color>
+    <color name="ios_tint">#007AFF</color>
+    <color name="ios_background">#F2F2F7</color>
+    <color name="ios_card">#FFFFFF</color>
 </resources>

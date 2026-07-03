@@ -7,6 +7,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.example.reports.R
 import com.example.reports.data.Field
 
 class FieldsAdapter(
@@ -16,7 +17,7 @@ class FieldsAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FieldViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(android.R.layout.simple_list_item_2, parent, false)
+            .inflate(R.layout.item_field, parent, false)
         return FieldViewHolder(view)
     }
 
@@ -25,12 +26,12 @@ class FieldsAdapter(
     }
 
     inner class FieldViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val text1 = itemView.findViewById<TextView>(android.R.id.text1)
-        private val text2 = itemView.findViewById<TextView>(android.R.id.text2)
+        private val tvName = itemView.findViewById<TextView>(R.id.tvName)
+        private val tvType = itemView.findViewById<TextView>(R.id.tvType)
 
         fun bind(field: Field) {
-            text1.text = "${field.name} (${field.type.name})"
-            text2.text = "Обязательное: ${if (field.isRequired) "Да" else "Нет"}"
+            tvName.text = field.name
+            tvType.text = "${field.type.name} • ${if (field.isRequired) "Обязательное" else "Необязательное"}"
             
             itemView.setOnClickListener { onEdit(field) }
             itemView.setOnLongClickListener {

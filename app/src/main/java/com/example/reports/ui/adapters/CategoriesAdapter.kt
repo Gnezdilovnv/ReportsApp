@@ -7,6 +7,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.example.reports.R
 import com.example.reports.data.Category
 import java.text.SimpleDateFormat
 import java.util.*
@@ -18,7 +19,7 @@ class CategoriesAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CategoryViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(android.R.layout.simple_list_item_2, parent, false)
+            .inflate(R.layout.item_category, parent, false)
         return CategoryViewHolder(view)
     }
 
@@ -27,13 +28,13 @@ class CategoriesAdapter(
     }
 
     inner class CategoryViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val text1 = itemView.findViewById<TextView>(android.R.id.text1)
-        private val text2 = itemView.findViewById<TextView>(android.R.id.text2)
-        private val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+        private val tvName = itemView.findViewById<TextView>(R.id.tvName)
+        private val tvDate = itemView.findViewById<TextView>(R.id.tvDate)
 
         fun bind(category: Category) {
-            text1.text = category.name
-            text2.text = dateFormat.format(Date(category.createdAt))
+            tvName.text = category.name
+            tvDate.text = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+                .format(Date(category.createdAt))
             
             itemView.setOnClickListener { onEdit(category) }
             itemView.setOnLongClickListener {
