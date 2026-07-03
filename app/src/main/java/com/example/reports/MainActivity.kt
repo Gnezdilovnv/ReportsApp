@@ -23,7 +23,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Инициализируем логгер
         Logger.init(this)
         Logger.writeLog("MainActivity onCreate started")
         
@@ -32,7 +31,6 @@ class MainActivity : AppCompatActivity() {
             setContentView(binding.root)
             Logger.writeLog("MainActivity layout inflated")
 
-            // Проверяем разрешения
             checkPermissions()
 
             binding.btnCreateReport.setOnClickListener {
@@ -88,13 +86,11 @@ class MainActivity : AppCompatActivity() {
                 }
                 
                 if (permissions.isNotEmpty()) {
-                    Logger.writeLog("Requesting permissions: ${permissions.joinToString()}")
+                    Logger.writeLog("Requesting permissions")
                     ActivityCompat.requestPermissions(this, permissions.toTypedArray(), PERMISSION_REQUEST_CODE)
                 } else {
                     Logger.writeLog("All permissions already granted")
                 }
-            } else {
-                Logger.writeLog("Android version < M, no permission check needed")
             }
         } catch (e: Exception) {
             Logger.writeError("checkPermissions error", e)
@@ -113,7 +109,6 @@ class MainActivity : AppCompatActivity() {
                 Logger.writeLog("Permissions result: $granted")
                 if (granted) {
                     Toast.makeText(this, "Разрешения предоставлены", Toast.LENGTH_SHORT).show()
-                    // Переинициализируем логгер после получения разрешений
                     Logger.init(this)
                 } else {
                     Toast.makeText(this, "Некоторые разрешения не предоставлены", Toast.LENGTH_LONG).show()
