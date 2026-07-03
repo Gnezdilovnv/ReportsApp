@@ -3,31 +3,22 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/ios_background">
+    android:background="@color/ds_background"
+    android:padding="16dp">
 
-    <!-- iOS 14 Navigation Bar -->
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:background="@color/ios_card"
-        android:elevation="0dp">
-        
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="Все отчеты"
-            android:textSize="17sp"
-            android:textStyle="bold"
-            android:textColor="@color/ios_label" />
-            
-    </FrameLayout>
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/reports_list"
+        style="@style/DeepSeekTitle"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp" />
 
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        style="@style/iOS14Card"
-        android:layout_margin="16dp">
+        style="@style/DeepSeekCard"
+        app:cardBackgroundColor="@color/ds_surface">
 
         <ListView
             android:id="@+id/listViewReports"

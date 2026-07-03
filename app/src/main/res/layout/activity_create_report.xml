@@ -3,82 +3,64 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/ios_background">
+    android:background="@color/ds_background"
+    android:padding="16dp">
 
-    <!-- iOS 14 Navigation Bar -->
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:background="@color/ios_card"
-        android:elevation="0dp">
-        
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="Новый отчет"
-            android:textSize="17sp"
-            android:textStyle="bold"
-            android:textColor="@color/ios_label" />
-            
-    </FrameLayout>
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/create_report"
+        style="@style/DeepSeekTitle"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp" />
 
-    <ScrollView
+    <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:padding="16dp">
+        android:layout_height="wrap_content"
+        style="@style/DeepSeekCard"
+        android:layout_marginBottom="16dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginTop="16dp">
+            android:orientation="vertical">
 
-            <!-- iOS 14 Section -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                style="@style/iOS14Card"
-                android:layout_marginBottom="16dp">
+                android:text="Категория"
+                style="@style/DeepSeekSubtitle"
+                android:layout_marginBottom="8dp" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Категория"
-                        android:textSize="13sp"
-                        android:textColor="@color/ios_secondary_label"
-                        android:layout_marginBottom="8dp" />
-
-                    <Spinner
-                        android:id="@+id/spinnerCategory"
-                        android:layout_width="match_parent"
-                        android:layout_height="44dp"
-                        android:background="@color/ios_card" />
-
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
-
-            <LinearLayout
-                android:id="@+id/fieldsContainer"
+            <Spinner
+                android:id="@+id/spinnerCategory"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical" />
-
-            <Button
-                android:id="@+id/btnSubmit"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_marginTop="16dp"
-                android:text="💾 Сохранить"
-                style="@style/iOS14Button" />
+                android:layout_height="48dp"
+                android:background="@drawable/ds_spinner_background" />
 
         </LinearLayout>
-        
+
+    </androidx.cardview.widget.CardView>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:id="@+id/fieldsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
     </ScrollView>
+
+    <Button
+        android:id="@+id/btnSubmit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/submit"
+        style="@style/DeepSeekButton"
+        android:layout_marginTop="16dp" />
+
 </LinearLayout>

@@ -3,56 +3,47 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/ios_background">
+    android:background="@color/ds_background"
+    android:padding="16dp">
 
-    <!-- iOS 14 Navigation Bar -->
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:background="@color/ios_card"
-        android:elevation="0dp">
-        
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="Логи"
-            android:textSize="17sp"
-            android:textStyle="bold"
-            android:textColor="@color/ios_label" />
-            
-    </FrameLayout>
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/logs"
+        style="@style/DeepSeekTitle"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="16dp">
+        android:layout_marginBottom="16dp">
 
         <Button
             android:id="@+id/btnRefresh"
             android:layout_width="0dp"
-            android:layout_height="44dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Обновить"
-            style="@style/iOS14Button"
+            android:text="@string/refresh"
+            style="@style/DeepSeekButtonSecondary"
             android:layout_marginEnd="8dp" />
 
         <Button
             android:id="@+id/btnClear"
             android:layout_width="0dp"
-            android:layout_height="44dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Очистить"
-            style="@style/iOS14ButtonDestructive" />
-
+            android:text="@string/clear"
+            style="@style/DeepSeekButtonSecondary"
+            android:textColor="@color/ds_red" />
     </LinearLayout>
 
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        style="@style/iOS14Card"
-        android:layout_margin="16dp">
+        style="@style/DeepSeekCard"
+        app:cardBackgroundColor="@color/ds_surface">
 
         <ScrollView
             android:id="@+id/scrollView"
@@ -66,7 +57,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="monospace"
                 android:textSize="12sp"
-                android:textColor="@color/ios_label" />
+                android:textColor="@color/ds_text_primary" />
 
         </ScrollView>
 

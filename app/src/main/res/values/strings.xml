@@ -4,8 +4,17 @@
     <string name="reports_list">Все отчеты</string>
     <string name="categories">Категории</string>
     <string name="fields">Поля</string>
+    <string name="logs">Логи</string>
     <string name="save">Сохранить</string>
     <string name="cancel">Отмена</string>
     <string name="delete">Удалить</string>
     <string name="edit">Редактировать</string>
+    <string name="add_category">Добавить категорию</string>
+    <string name="add_field">Добавить поле</string>
+    <string name="refresh">Обновить</string>
+    <string name="clear">Очистить</string>
+    <string name="new_category">Новая категория</string>
+    <string name="new_field">Новое поле</string>
+    <string name="select_categories">Выбрать категории</string>
+    <string name="submit">Сохранить</string>
 </resources>
