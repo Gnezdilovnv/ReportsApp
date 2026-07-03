@@ -9,6 +9,8 @@ import com.example.reports.R
 import com.example.reports.data.AppDatabase
 import com.example.reports.utils.Logger
 import kotlinx.coroutines.*
+import java.text.SimpleDateFormat
+import java.util.*
 
 class ReportsListActivity : AppCompatActivity() {
     private lateinit var listView: ListView
