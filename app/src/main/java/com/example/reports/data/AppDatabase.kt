@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 
 @Database(
     entities = [Category::class, Field::class, FieldCategoryRelation::class, Report::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -27,8 +27,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "reports_database"
-                ).fallbackToDestructiveMigration()
-                 .build()
+                )
+                .fallbackToDestructiveMigration() // Обновляем схему
+                .build()
                 INSTANCE = instance
                 instance
             }
